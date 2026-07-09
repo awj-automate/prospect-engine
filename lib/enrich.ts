@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { leads } from "@/lib/db/schema";
 import type { EnrichmentJobRow, LeadRow } from "@/lib/db/schema";
 import { leadshark } from "@/lib/leadshark";
-import { PERSON_ENRICH_SECTIONS } from "@/lib/env";
+import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import { enqueueJob, markDone, markFailed } from "@/lib/jobs";
 import { incrementUsage } from "@/lib/usage";
@@ -34,7 +34,7 @@ export async function handlePerson(lead: LeadRow): Promise<void> {
   if (!lead.linkedinUsername) {
     throw new Error("person enrich: lead has no linkedin_username");
   }
-  const res = await leadshark.enrichPerson(lead.linkedinUsername, PERSON_ENRICH_SECTIONS);
+  const res = await leadshark.enrichPerson(lead.linkedinUsername, env.PERSON_ENRICH_SECTIONS);
   await incrementUsage("person");
 
   const data: PersonEnrichmentData | null = res?.data ?? null;

@@ -4,7 +4,7 @@ import { leads, researchBriefs } from "@/lib/db/schema";
 import type { LeadRow, ResearchBriefRow } from "@/lib/db/schema";
 import { anthropic, BRIEF_MODEL } from "@/lib/anthropic";
 import { leadshark } from "@/lib/leadshark";
-import { PERSON_ENRICH_SECTIONS } from "@/lib/env";
+import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import { incrementUsage, getRemainingToday } from "@/lib/usage";
 import { getWebResearcher } from "@/lib/research";
@@ -44,7 +44,7 @@ async function ensurePerson(lead: LeadRow): Promise<LeadRow> {
     return lead;
   }
   try {
-    const res = await leadshark.enrichPerson(lead.linkedinUsername, PERSON_ENRICH_SECTIONS);
+    const res = await leadshark.enrichPerson(lead.linkedinUsername, env.PERSON_ENRICH_SECTIONS);
     await incrementUsage("person");
     const data: PersonEnrichmentData | null = res?.data ?? null;
     await db

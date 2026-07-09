@@ -1,4 +1,4 @@
-import { env, PERSON_ENRICH_SECTIONS } from "@/lib/env";
+import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import { sleep } from "@/lib/utils";
 import type {
@@ -296,7 +296,7 @@ async function listAllSignals(
  */
 async function enrichPerson(
   linkedinId: string,
-  sections: string = PERSON_ENRICH_SECTIONS
+  sections: string = env.PERSON_ENRICH_SECTIONS
 ): Promise<EnrichPersonResponse> {
   return request<EnrichPersonResponse>("/api/enrich/person", {
     method: "GET",

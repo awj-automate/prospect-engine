@@ -103,6 +103,30 @@ function loadEnv(): Env {
   return parsed.data;
 }
 
-export const env = loadEnv();
+/**
+ * Lazily validated. `next build` imports every route module to collect page
+ * data — at that point the Railway env vars aren't present. Validating on first
+ * property access (rather than at import) lets the build succeed while still
+ * failing fast on the first real request / at worker startup.
+ */
+let cached: Env | null = null;
 
-export const PERSON_ENRICH_SECTIONS = env.PERSON_ENRICH_SECTIONS;
+export function getEnv(): Env {
+  if (!cached) cached = loadEnv();
+  return cached;
+}
+
+export const env: Env = new Proxy({} as Env, {
+  get(_target, prop) {
+    return getEnv()[prop as keyof Env];
+  },
+  has(_target, prop) {
+    return prop in getEnv();
+  },
+  ownKeys() {
+    return Reflect.ownKeys(getEnv());
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    return Object.getOwnPropertyDescriptor(getEnv(), prop);
+  },
+});
