@@ -1,0 +1,168 @@
+{
+  "id": "0f5a1c2b-0000-4a00-9000-000000000000",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.leads": {
+      "name": "leads",
+      "schema": "",
+      "columns": {
+        "id": { "name": "id", "type": "uuid", "primaryKey": true, "notNull": true, "default": "gen_random_uuid()" },
+        "leadshark_id": { "name": "leadshark_id", "type": "text", "primaryKey": false, "notNull": true },
+        "name": { "name": "name", "type": "text", "primaryKey": false, "notNull": false },
+        "first_name": { "name": "first_name", "type": "text", "primaryKey": false, "notNull": false },
+        "title": { "name": "title", "type": "text", "primaryKey": false, "notNull": false },
+        "linkedin_url": { "name": "linkedin_url", "type": "text", "primaryKey": false, "notNull": false },
+        "linkedin_username": { "name": "linkedin_username", "type": "text", "primaryKey": false, "notNull": false },
+        "commenter_id": { "name": "commenter_id", "type": "text", "primaryKey": false, "notNull": false },
+        "source": { "name": "source", "type": "text", "primaryKey": false, "notNull": false },
+        "lead_type": { "name": "lead_type", "type": "text", "primaryKey": false, "notNull": false },
+        "post_id": { "name": "post_id", "type": "text", "primaryKey": false, "notNull": false },
+        "icp_score": { "name": "icp_score", "type": "real", "primaryKey": false, "notNull": false },
+        "icp_fit": { "name": "icp_fit", "type": "text", "primaryKey": false, "notNull": false },
+        "icp_analysis": { "name": "icp_analysis", "type": "jsonb", "primaryKey": false, "notNull": false },
+        "engagements": { "name": "engagements", "type": "jsonb", "primaryKey": false, "notNull": false, "default": "'[]'::jsonb" },
+        "archived": { "name": "archived", "type": "boolean", "primaryKey": false, "notNull": true, "default": false },
+        "ls_created_at": { "name": "ls_created_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": false },
+        "ls_updated_at": { "name": "ls_updated_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": false },
+        "heat_score": { "name": "heat_score", "type": "real", "primaryKey": false, "notNull": false },
+        "signal_count": { "name": "signal_count", "type": "integer", "primaryKey": false, "notNull": false },
+        "signal_breakdown": { "name": "signal_breakdown", "type": "jsonb", "primaryKey": false, "notNull": false },
+        "top_signals": { "name": "top_signals", "type": "jsonb", "primaryKey": false, "notNull": false, "default": "'[]'::jsonb" },
+        "connection_status": { "name": "connection_status", "type": "text", "primaryKey": false, "notNull": false },
+        "score": { "name": "score", "type": "real", "primaryKey": false, "notNull": false },
+        "score_breakdown": { "name": "score_breakdown", "type": "jsonb", "primaryKey": false, "notNull": false },
+        "last_engagement_at": { "name": "last_engagement_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": false },
+        "person_enriched": { "name": "person_enriched", "type": "jsonb", "primaryKey": false, "notNull": false },
+        "person_enriched_at": { "name": "person_enriched_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": false },
+        "company_slug": { "name": "company_slug", "type": "text", "primaryKey": false, "notNull": false },
+        "company_enriched": { "name": "company_enriched", "type": "jsonb", "primaryKey": false, "notNull": false },
+        "company_enriched_at": { "name": "company_enriched_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": false },
+        "email": { "name": "email", "type": "text", "primaryKey": false, "notNull": false },
+        "phone": { "name": "phone", "type": "text", "primaryKey": false, "notNull": false },
+        "contact_enriched_at": { "name": "contact_enriched_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": false },
+        "contact_source": { "name": "contact_source", "type": "text", "primaryKey": false, "notNull": false },
+        "created_at": { "name": "created_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" },
+        "updated_at": { "name": "updated_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" }
+      },
+      "indexes": {
+        "leads_commenter_id_idx": { "name": "leads_commenter_id_idx", "columns": [{ "expression": "commenter_id", "isExpression": false, "asc": true, "nulls": "last" }], "isUnique": false, "concurrently": false, "method": "btree", "with": {} },
+        "leads_score_idx": { "name": "leads_score_idx", "columns": [{ "expression": "score", "isExpression": false, "asc": true, "nulls": "last" }], "isUnique": false, "concurrently": false, "method": "btree", "with": {} },
+        "leads_icp_fit_idx": { "name": "leads_icp_fit_idx", "columns": [{ "expression": "icp_fit", "isExpression": false, "asc": true, "nulls": "last" }], "isUnique": false, "concurrently": false, "method": "btree", "with": {} }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "leads_leadshark_id_unique": { "name": "leads_leadshark_id_unique", "nullsNotDistinct": false, "columns": ["leadshark_id"] }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.enrichment_jobs": {
+      "name": "enrichment_jobs",
+      "schema": "",
+      "columns": {
+        "id": { "name": "id", "type": "uuid", "primaryKey": true, "notNull": true, "default": "gen_random_uuid()" },
+        "lead_id": { "name": "lead_id", "type": "uuid", "primaryKey": false, "notNull": true },
+        "kind": { "name": "kind", "type": "job_kind", "typeSchema": "public", "primaryKey": false, "notNull": true },
+        "status": { "name": "status", "type": "job_status", "typeSchema": "public", "primaryKey": false, "notNull": true, "default": "'pending'" },
+        "priority": { "name": "priority", "type": "real", "primaryKey": false, "notNull": true, "default": 0 },
+        "attempts": { "name": "attempts", "type": "integer", "primaryKey": false, "notNull": true, "default": 0 },
+        "scheduled_for": { "name": "scheduled_for", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" },
+        "error": { "name": "error", "type": "text", "primaryKey": false, "notNull": false },
+        "created_at": { "name": "created_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" },
+        "processed_at": { "name": "processed_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": false }
+      },
+      "indexes": {
+        "enrichment_jobs_lead_kind_unq": { "name": "enrichment_jobs_lead_kind_unq", "columns": [{ "expression": "lead_id", "isExpression": false, "asc": true, "nulls": "last" }, { "expression": "kind", "isExpression": false, "asc": true, "nulls": "last" }], "isUnique": true, "concurrently": false, "method": "btree", "with": {} },
+        "enrichment_jobs_status_priority_idx": { "name": "enrichment_jobs_status_priority_idx", "columns": [{ "expression": "status", "isExpression": false, "asc": true, "nulls": "last" }, { "expression": "priority", "isExpression": false, "asc": true, "nulls": "last" }], "isUnique": false, "concurrently": false, "method": "btree", "with": {} }
+      },
+      "foreignKeys": {
+        "enrichment_jobs_lead_id_leads_id_fk": { "name": "enrichment_jobs_lead_id_leads_id_fk", "tableFrom": "enrichment_jobs", "tableTo": "leads", "columnsFrom": ["lead_id"], "columnsTo": ["id"], "onDelete": "cascade", "onUpdate": "no action" }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.daily_usage": {
+      "name": "daily_usage",
+      "schema": "",
+      "columns": {
+        "id": { "name": "id", "type": "uuid", "primaryKey": true, "notNull": true, "default": "gen_random_uuid()" },
+        "date": { "name": "date", "type": "date", "primaryKey": false, "notNull": true },
+        "kind": { "name": "kind", "type": "text", "primaryKey": false, "notNull": true },
+        "count": { "name": "count", "type": "integer", "primaryKey": false, "notNull": true, "default": 0 }
+      },
+      "indexes": {
+        "daily_usage_date_kind_unq": { "name": "daily_usage_date_kind_unq", "columns": [{ "expression": "date", "isExpression": false, "asc": true, "nulls": "last" }, { "expression": "kind", "isExpression": false, "asc": true, "nulls": "last" }], "isUnique": true, "concurrently": false, "method": "btree", "with": {} }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.research_briefs": {
+      "name": "research_briefs",
+      "schema": "",
+      "columns": {
+        "id": { "name": "id", "type": "uuid", "primaryKey": true, "notNull": true, "default": "gen_random_uuid()" },
+        "lead_id": { "name": "lead_id", "type": "uuid", "primaryKey": false, "notNull": true },
+        "status": { "name": "status", "type": "brief_status", "typeSchema": "public", "primaryKey": false, "notNull": true, "default": "'generating'" },
+        "content": { "name": "content", "type": "text", "primaryKey": false, "notNull": false },
+        "structured": { "name": "structured", "type": "jsonb", "primaryKey": false, "notNull": false },
+        "citations": { "name": "citations", "type": "jsonb", "primaryKey": false, "notNull": false, "default": "'[]'::jsonb" },
+        "model": { "name": "model", "type": "text", "primaryKey": false, "notNull": false },
+        "error": { "name": "error", "type": "text", "primaryKey": false, "notNull": false },
+        "created_at": { "name": "created_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" },
+        "completed_at": { "name": "completed_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": false }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "research_briefs_lead_id_leads_id_fk": { "name": "research_briefs_lead_id_leads_id_fk", "tableFrom": "research_briefs", "tableTo": "leads", "columnsFrom": ["lead_id"], "columnsTo": ["id"], "onDelete": "cascade", "onUpdate": "no action" }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sync_runs": {
+      "name": "sync_runs",
+      "schema": "",
+      "columns": {
+        "id": { "name": "id", "type": "uuid", "primaryKey": true, "notNull": true, "default": "gen_random_uuid()" },
+        "started_at": { "name": "started_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" },
+        "finished_at": { "name": "finished_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": false },
+        "leads_upserted": { "name": "leads_upserted", "type": "integer", "primaryKey": false, "notNull": true, "default": 0 },
+        "signals_updated": { "name": "signals_updated", "type": "integer", "primaryKey": false, "notNull": true, "default": 0 },
+        "status": { "name": "status", "type": "sync_status", "typeSchema": "public", "primaryKey": false, "notNull": true, "default": "'running'" },
+        "error": { "name": "error", "type": "text", "primaryKey": false, "notNull": false }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.brief_status": { "name": "brief_status", "schema": "public", "values": ["generating", "done", "failed"] },
+    "public.job_kind": { "name": "job_kind", "schema": "public", "values": ["person", "company_resolve", "company", "contact"] },
+    "public.job_status": { "name": "job_status", "schema": "public", "values": ["pending", "processing", "done", "failed"] },
+    "public.sync_status": { "name": "sync_status", "schema": "public", "values": ["running", "done", "failed"] }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": { "columns": {}, "schemas": {}, "tables": {} }
+}
