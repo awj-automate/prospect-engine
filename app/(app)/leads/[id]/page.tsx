@@ -228,6 +228,33 @@ export default function LeadDetailPage() {
             </CardContent>
           </Card>
 
+          {/* ICP analysis (free from LeadShark, no enrichment) */}
+          {lead.icpAnalysis && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">ICP analysis (LeadShark)</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {typeof lead.icpAnalysis.summary === "string" && (
+                  <p className="text-muted-foreground">{lead.icpAnalysis.summary}</p>
+                )}
+                {Array.isArray(lead.icpAnalysis.reasons) && lead.icpAnalysis.reasons.length > 0 && (
+                  <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+                    {lead.icpAnalysis.reasons.map((r, i) => (
+                      <li key={i}>{String(r)}</li>
+                    ))}
+                  </ul>
+                )}
+                <details className="text-xs">
+                  <summary className="cursor-pointer text-muted-foreground">Raw</summary>
+                  <pre className="mt-1 overflow-auto rounded bg-muted p-2 text-[11px] leading-snug">
+                    {JSON.stringify(lead.icpAnalysis, null, 2)}
+                  </pre>
+                </details>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Engagement history */}
           <Card>
             <CardHeader className="pb-2">

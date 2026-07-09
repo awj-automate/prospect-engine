@@ -24,6 +24,23 @@ const log = createLogger("sync");
 const AUTO_ENQUEUE_LIMIT = 500;
 const UPSERT_CHUNK = 200;
 
+let loggedRawSample = false;
+function logRawSampleOnce(lead: Lead | undefined, signal: Signal | undefined, apex: boolean) {
+  if (loggedRawSample) return;
+  loggedRawSample = true;
+  log.info("RAW SAMPLE [leads] — first lead object as returned by LeadShark", {
+    apexSignalsAvailable: apex,
+    icpAnalysisPresent: lead?.icp_analysis != null,
+    engagementCount: lead?.engagements?.length ?? 0,
+    firstLead: lead ?? null,
+  });
+  if (apex) {
+    log.info("RAW SAMPLE [signals] — first signal object as returned by LeadShark", {
+      firstSignal: signal ?? null,
+    });
+  }
+}
+
 function toDate(v: string | null | undefined): Date | null {
   if (!v) return null;
   const t = Date.parse(v);
@@ -108,6 +125,11 @@ export async function runSync(): Promise<SyncResult> {
       leadshark.listAllSignals({ sort: "heat_score" }),
     ]);
     const apexSignals = allSignals !== null;
+
+    // One-time raw-sample log so we can eyeball exactly which free fields
+    // LeadShark populates for this account (esp. icp_analysis) before deciding
+    // how to weight scoring. Guarded so it logs once per process.
+    logRawSampleOnce(allLeads[0], allSignals?.[0], apexSignals);
 
     const signalsByActor = new Map<string, Signal>();
     for (const s of allSignals ?? []) {
