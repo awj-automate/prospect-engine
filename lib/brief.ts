@@ -3,15 +3,10 @@ import { db } from "@/lib/db";
 import { leads, researchBriefs } from "@/lib/db/schema";
 import type { LeadRow, ResearchBriefRow } from "@/lib/db/schema";
 import { anthropic, BRIEF_MODEL } from "@/lib/anthropic";
-import { leadshark } from "@/lib/leadshark";
-import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
-import { incrementUsage, getRemainingToday } from "@/lib/usage";
 import { getWebResearcher } from "@/lib/research";
-import { handleContact } from "@/lib/enrich";
+import { handleContact, ensurePersonInline, ensureCompanyInline } from "@/lib/enrich";
 import type {
-  PersonEnrichmentData,
-  CompanyEnrichmentData,
   ResearchCitation,
   ResearchStructured,
   WebResearchResult,
@@ -33,64 +28,6 @@ type Emit = (p: BriefProgress) => void | Promise<void>;
 async function reload(leadId: string): Promise<LeadRow | null> {
   const [row] = await db.select().from(leads).where(eq(leads.id, leadId)).limit(1);
   return row ?? null;
-}
-
-/* ── inline enrichment helpers (best-effort; respect caps) ── */
-
-async function ensurePerson(lead: LeadRow): Promise<LeadRow> {
-  if (lead.personEnriched || !lead.linkedinUsername) return lead;
-  if ((await getRemainingToday("person")) <= 0) {
-    log.warn("brief: person cap reached; proceeding partial", { leadId: lead.id });
-    return lead;
-  }
-  try {
-    const res = await leadshark.enrichPerson(lead.linkedinUsername, env.PERSON_ENRICH_SECTIONS);
-    await incrementUsage("person");
-    const data: PersonEnrichmentData | null = res?.data ?? null;
-    await db
-      .update(leads)
-      .set({ personEnriched: data, personEnrichedAt: new Date(), updatedAt: new Date() })
-      .where(eq(leads.id, lead.id));
-  } catch (err) {
-    log.warn("brief: person enrichment failed; proceeding partial", err);
-  }
-  return (await reload(lead.id)) ?? lead;
-}
-
-async function ensureCompany(lead: LeadRow): Promise<LeadRow> {
-  if (lead.companyEnriched) return lead;
-
-  let slug = lead.companySlug;
-  const employer = lead.personEnriched?.experience?.[0]?.company?.trim();
-  if (!slug && employer) {
-    try {
-      const res = await leadshark.searchLinkedin({ company: employer }, 5);
-      slug = res?.data?.results?.[0]?.linkedin_id ?? null;
-      if (slug) {
-        await db.update(leads).set({ companySlug: slug, updatedAt: new Date() }).where(eq(leads.id, lead.id));
-      }
-    } catch (err) {
-      log.warn("brief: company resolve failed", err);
-    }
-  }
-  if (!slug) return (await reload(lead.id)) ?? lead;
-
-  if ((await getRemainingToday("company")) <= 0) {
-    log.warn("brief: company cap reached; proceeding partial", { leadId: lead.id });
-    return (await reload(lead.id)) ?? lead;
-  }
-  try {
-    const res = await leadshark.enrichCompany(slug);
-    await incrementUsage("company");
-    const data: CompanyEnrichmentData | null = res?.data ?? null;
-    await db
-      .update(leads)
-      .set({ companyEnriched: data, companyEnrichedAt: new Date(), updatedAt: new Date() })
-      .where(eq(leads.id, lead.id));
-  } catch (err) {
-    log.warn("brief: company enrichment failed", err);
-  }
-  return (await reload(lead.id)) ?? lead;
 }
 
 /* ── web research query builder ── */
@@ -212,9 +149,9 @@ export async function generateBrief(leadId: string, emit: Emit): Promise<Researc
 
     // (a) ensure person + company enrichment
     await emit({ step: "person", message: "Enriching person profile…" });
-    lead = await ensurePerson(lead);
+    lead = await ensurePersonInline(lead);
     await emit({ step: "company", message: "Enriching company…" });
-    lead = await ensureCompany(lead);
+    lead = await ensureCompanyInline(lead);
 
     // (b) optionally contact
     if (!lead.email) {

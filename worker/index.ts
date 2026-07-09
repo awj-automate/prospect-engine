@@ -62,8 +62,9 @@ async function main() {
   // Sync every 6 hours.
   cron.schedule("0 */6 * * *", () => void safeSync("cron-6h"), { timezone: env.TZ });
 
-  // Drip enricher every 15 minutes.
-  cron.schedule("*/15 * * * *", () => void safeDrip(), { timezone: env.TZ });
+  // Drip enricher every 5 minutes (paced against the daily cap regardless of
+  // tick frequency; more frequent ticks just spread the load more smoothly).
+  cron.schedule("*/5 * * * *", () => void safeDrip(), { timezone: env.TZ });
 
   // Kick an initial sync shortly after boot so the first deploy has data,
   // then a drip tick once it's done.
@@ -74,7 +75,7 @@ async function main() {
     })();
   }, 5_000);
 
-  log.info("worker scheduled: sync every 6h, drip every 15m");
+  log.info("worker scheduled: sync every 6h, drip every 5m");
 }
 
 // Keep the process alive and shut down cleanly.

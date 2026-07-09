@@ -40,8 +40,8 @@ const envSchema = z
 
     TZ: z.string().default("Europe/London"),
 
-    DAILY_PERSON_ENRICH_CAP: IntFromString(50),
-    DAILY_COMPANY_ENRICH_CAP: IntFromString(50),
+    DAILY_PERSON_ENRICH_CAP: IntFromString(150),
+    DAILY_COMPANY_ENRICH_CAP: IntFromString(75),
     ENRICH_WINDOW_START_HOUR: HourFromString(8),
     ENRICH_WINDOW_END_HOUR: HourFromString(20),
     PERSON_ENRICH_SECTIONS: z

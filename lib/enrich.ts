@@ -5,8 +5,8 @@ import type { EnrichmentJobRow, LeadRow } from "@/lib/db/schema";
 import { leadshark } from "@/lib/leadshark";
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
-import { enqueueJob, markDone, markFailed } from "@/lib/jobs";
-import { incrementUsage } from "@/lib/usage";
+import { enqueueJob, markDone, markFailed, closeOpenJobs } from "@/lib/jobs";
+import { incrementUsage, getRemainingToday } from "@/lib/usage";
 import { getContactEnricher } from "@/lib/contact";
 import type { PersonEnrichmentData, CompanyEnrichmentData } from "@/lib/types";
 
@@ -23,9 +23,74 @@ function recordContactCall() {
   contactCalls.push(Date.now());
 }
 
-async function loadLead(leadId: string): Promise<LeadRow | null> {
+export async function loadLead(leadId: string): Promise<LeadRow | null> {
   const [row] = await db.select().from(leads).where(eq(leads.id, leadId)).limit(1);
   return row ?? null;
+}
+
+/* ─────────────── inline enrichment (shared by brief + manual route) ───────────────
+ * Best-effort, respects the daily caps, creates no queue jobs. Each performs at
+ * most one LinkedIn profile view. Returns the freshly-reloaded lead.
+ */
+
+export async function ensurePersonInline(lead: LeadRow): Promise<LeadRow> {
+  if (lead.personEnriched || !lead.linkedinUsername) return lead;
+  if ((await getRemainingToday("person")) <= 0) {
+    log.warn("inline person cap reached; skipping", { leadId: lead.id });
+    return lead;
+  }
+  try {
+    const res = await leadshark.enrichPerson(lead.linkedinUsername, env.PERSON_ENRICH_SECTIONS);
+    await incrementUsage("person");
+    const data: PersonEnrichmentData | null = res?.data ?? null;
+    await db
+      .update(leads)
+      .set({ personEnriched: data, personEnrichedAt: new Date(), updatedAt: new Date() })
+      .where(eq(leads.id, lead.id));
+    // A worker-queued person job would re-view the same profile — close it.
+    await closeOpenJobs(lead.id, "person");
+  } catch (err) {
+    log.warn("inline person enrichment failed", err);
+  }
+  return (await loadLead(lead.id)) ?? lead;
+}
+
+export async function ensureCompanyInline(lead: LeadRow): Promise<LeadRow> {
+  if (lead.companyEnriched) return lead;
+
+  let slug = lead.companySlug;
+  const employer = lead.personEnriched?.experience?.[0]?.company?.trim();
+  if (!slug && employer) {
+    try {
+      const res = await leadshark.searchLinkedin({ company: employer }, 5);
+      slug = res?.data?.results?.[0]?.linkedin_id ?? null;
+      if (slug) {
+        await db.update(leads).set({ companySlug: slug, updatedAt: new Date() }).where(eq(leads.id, lead.id));
+        await closeOpenJobs(lead.id, "company_resolve");
+      }
+    } catch (err) {
+      log.warn("inline company resolve failed", err);
+    }
+  }
+  if (!slug) return (await loadLead(lead.id)) ?? lead;
+
+  if ((await getRemainingToday("company")) <= 0) {
+    log.warn("inline company cap reached; skipping", { leadId: lead.id });
+    return (await loadLead(lead.id)) ?? lead;
+  }
+  try {
+    const res = await leadshark.enrichCompany(slug);
+    await incrementUsage("company");
+    const data: CompanyEnrichmentData | null = res?.data ?? null;
+    await db
+      .update(leads)
+      .set({ companyEnriched: data, companyEnrichedAt: new Date(), updatedAt: new Date() })
+      .where(eq(leads.id, lead.id));
+    await closeOpenJobs(lead.id, "company");
+  } catch (err) {
+    log.warn("inline company enrichment failed", err);
+  }
+  return (await loadLead(lead.id)) ?? lead;
 }
 
 /* ───────────────────────────── person ───────────────────────────── */

@@ -27,7 +27,7 @@ Create **two services** from this same GitHub repo, sharing all environment vari
 | Service    | Start command                    | Notes                                            |
 | ---------- | -------------------------------- | ------------------------------------------------ |
 | **web**    | `npm run migrate && next start`  | Runs migrations, then serves Next.js.            |
-| **worker** | `tsx worker/index.ts`            | node-cron: sync every 6h, drip enricher every 15m. |
+| **worker** | `tsx worker/index.ts`            | node-cron: sync every 6h, drip enricher every 5m. |
 
 Build command for both: `npm run build` (the worker doesn't strictly need the Next build, but a
 shared build keeps images identical). Enable **auto-deploy on push**.
@@ -50,8 +50,8 @@ ANYMAILFINDER_API_KEY   AnyMail Finder API key (email lookup)
 APP_PASSWORD            single shared password for the cookie gate
 CRON_SECRET             shared secret for internal/cron API calls (x-cron-secret header)
 TZ                      default Europe/London — controls the enrichment window
-DAILY_PERSON_ENRICH_CAP default 50
-DAILY_COMPANY_ENRICH_CAP default 50
+DAILY_PERSON_ENRICH_CAP default 150  (LeadShark suggests ~200–250 profile views/day total)
+DAILY_COMPANY_ENRICH_CAP default 75
 ENRICH_WINDOW_START_HOUR default 8
 ENRICH_WINDOW_END_HOUR   default 20
 PERSON_ENRICH_SECTIONS   default "about,experience,education"
@@ -78,7 +78,7 @@ Open the web URL, sign in with `APP_PASSWORD`, and you're in.
   against the dataset, independently of the 0–1 ICP score) → auto-enqueue `person` jobs for the
   top eligible leads. A `403` on the Apex-only signals endpoint is logged once and skipped — sync
   never breaks; scoring falls back to each lead's `icp_score`.
-- **Drip enricher** (worker, every 15m): within the window, processes just enough
+- **Drip enricher** (worker, every 5m): within the window, processes just enough
   highest-priority pending jobs to hit the even-pacing target, never exceeding the daily caps.
   Two-hop company enrichment is modelled as its own `company_resolve` step (name → slug via
   LinkedIn search) so it's observable and retryable. `searchLinkedin` and contact enrichment do

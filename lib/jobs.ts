@@ -88,6 +88,23 @@ export async function claimPendingJobs(kinds: JobKind[], limit: number): Promise
   return candidates.map((c) => ({ ...c, status: "processing" as const }));
 }
 
+/**
+ * Mark any pending/processing job for (lead, kind) as done — used after an
+ * inline enrichment so the worker doesn't repeat the same LinkedIn profile view.
+ */
+export async function closeOpenJobs(leadId: string, kind: JobKind): Promise<void> {
+  await db
+    .update(enrichmentJobs)
+    .set({ status: "done", processedAt: new Date() })
+    .where(
+      and(
+        eq(enrichmentJobs.leadId, leadId),
+        eq(enrichmentJobs.kind, kind),
+        inArray(enrichmentJobs.status, ["pending", "processing"])
+      )
+    );
+}
+
 export async function markDone(jobId: string): Promise<void> {
   await db
     .update(enrichmentJobs)
