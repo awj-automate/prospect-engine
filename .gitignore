@@ -13,3 +13,5 @@ npm-debug.log*
 next-env.d.ts
 .turbo
 coverage
+
+*.tsbuildinfo

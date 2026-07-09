@@ -46,9 +46,7 @@ ANTHROPIC_API_KEY       Claude API key (brief synthesis, claude-sonnet-4-6)
 WEB_RESEARCH_PROVIDER   perplexity | linkup
 PERPLEXITY_API_KEY      required if WEB_RESEARCH_PROVIDER=perplexity
 LINKUP_API_KEY          required if WEB_RESEARCH_PROVIDER=linkup
-CONTACT_PROVIDER        leadmagic | findymail
-LEADMAGIC_API_KEY       required if CONTACT_PROVIDER=leadmagic
-FINDYMAIL_API_KEY       required if CONTACT_PROVIDER=findymail
+ANYMAILFINDER_API_KEY   AnyMail Finder API key (email lookup)
 APP_PASSWORD            single shared password for the cookie gate
 CRON_SECRET             shared secret for internal/cron API calls (x-cron-secret header)
 TZ                      default Europe/London — controls the enrichment window

@@ -33,9 +33,7 @@ const envSchema = z
     PERPLEXITY_API_KEY: z.string().optional(),
     LINKUP_API_KEY: z.string().optional(),
 
-    CONTACT_PROVIDER: z.enum(["leadmagic", "findymail"]),
-    LEADMAGIC_API_KEY: z.string().optional(),
-    FINDYMAIL_API_KEY: z.string().optional(),
+    ANYMAILFINDER_API_KEY: z.string().min(1, "ANYMAILFINDER_API_KEY is required"),
 
     APP_PASSWORD: z.string().min(1, "APP_PASSWORD is required"),
     CRON_SECRET: z.string().min(1, "CRON_SECRET is required"),
@@ -64,20 +62,6 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ["LINKUP_API_KEY"],
         message: "LINKUP_API_KEY is required when WEB_RESEARCH_PROVIDER=linkup",
-      });
-    }
-    if (val.CONTACT_PROVIDER === "leadmagic" && !val.LEADMAGIC_API_KEY) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["LEADMAGIC_API_KEY"],
-        message: "LEADMAGIC_API_KEY is required when CONTACT_PROVIDER=leadmagic",
-      });
-    }
-    if (val.CONTACT_PROVIDER === "findymail" && !val.FINDYMAIL_API_KEY) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["FINDYMAIL_API_KEY"],
-        message: "FINDYMAIL_API_KEY is required when CONTACT_PROVIDER=findymail",
       });
     }
     if (val.ENRICH_WINDOW_END_HOUR <= val.ENRICH_WINDOW_START_HOUR) {
