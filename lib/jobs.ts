@@ -50,7 +50,7 @@ export async function enqueueJob(opts: {
             // Only revive non-done jobs; bump priority for done→(unchanged).
             status: sql`CASE WHEN ${enrichmentJobs.status} = 'done' THEN ${enrichmentJobs.status} ELSE 'pending' END`,
             priority: sql`GREATEST(${enrichmentJobs.priority}, ${effPriority})`,
-            scheduledFor: sql`CASE WHEN ${enrichmentJobs.status} = 'done' THEN ${enrichmentJobs.scheduledFor} ELSE ${new Date()} END`,
+            scheduledFor: sql`CASE WHEN ${enrichmentJobs.status} = 'done' THEN ${enrichmentJobs.scheduledFor} ELSE now() END`,
           },
     })
     .returning();
