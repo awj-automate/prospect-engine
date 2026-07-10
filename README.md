@@ -41,7 +41,11 @@ Copy `.env.example`. All are validated at startup with Zod (fail-fast):
 
 ```
 DATABASE_URL            Neon POOLED connection string
-LEADSHARK_API_KEY       Apex / LeadShark API key (x-api-key header)
+LEADSHARK_API_KEY       Apex / LeadShark API key (x-api-key header) — always required (lead source)
+PROFILE_ENRICH_PROVIDER leadshark (default) | scrapfly — profile/company enrichment backend
+SCRAPFLY_API_KEY        required if PROFILE_ENRICH_PROVIDER=scrapfly
+SCRAPFLY_COUNTRY        default us — Scrapfly proxy country (ISO alpha-2)
+SCRAPFLY_RENDER_JS      default false — spend Scrapfly credits on JS rendering (not needed for profiles)
 ANTHROPIC_API_KEY       Claude API key (brief synthesis, claude-sonnet-4-6)
 WEB_RESEARCH_PROVIDER   perplexity | linkup
 PERPLEXITY_API_KEY      required if WEB_RESEARCH_PROVIDER=perplexity
@@ -88,11 +92,32 @@ Open the web URL, sign in with `APP_PASSWORD`, and you're in.
   queries → Claude synthesis into Snapshot / Company Overview / Signals & Triggers / Fit /
   Outreach Angle / Suggested Opener. Stored as markdown + structured JSON + citations.
 
+### Enrichment provider: LeadShark vs Scrapfly
+
+Profile/company **enrichment** is pluggable via `PROFILE_ENRICH_PROVIDER` (`lib/enrich-provider.ts`).
+Lead **sourcing** (engagement discovery + heat signals in `lib/sync.ts`) always stays on LeadShark —
+Scrapfly can't discover who engaged with a post.
+
+- `leadshark` (default): authenticated enrichment. Full experience history, skills, connections.
+- `scrapfly`: scrapes **public** LinkedIn profile/company pages via the Scrapfly Web Scraping API —
+  no LinkedIn login. Data is thinner: name, headline, about, current/most-recent employer (+ its
+  company slug, read straight off the profile so the `company_resolve` search hop is skipped),
+  education, languages, follower count. **No skills**, usually **no full work history**, no
+  connection count. Set `SCRAPFLY_API_KEY` and flip `PROFILE_ENRICH_PROVIDER=scrapfly`.
+
+Smoke-test Scrapfly against the live API without touching the DB (spends ≤2 Scrapfly credits/run):
+
+```
+pnpm test:scrapfly                    # defaults: williamhgates + microsoft (needs SCRAPFLY_API_KEY in .env.local)
+pnpm test:scrapfly <profileSlug> [companySlug]
+```
+
 ### Local-only helpers (not needed to deploy)
 
 - `npm run db:generate` — regenerate a migration after editing `lib/db/schema.ts`.
 - `npm run migrate` — apply migrations manually.
 - `npm run typecheck` — `tsc --noEmit`.
+- `pnpm test:scrapfly` — live smoke test of the Scrapfly enricher (see above).
 
 ### Verifying the LeadShark `linkedin_id` param
 
