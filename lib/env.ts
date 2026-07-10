@@ -29,6 +29,10 @@ const envSchema = z
     LEADSHARK_API_KEY: z.string().min(1, "LEADSHARK_API_KEY is required"),
     ANTHROPIC_API_KEY: z.string().min(1, "ANTHROPIC_API_KEY is required"),
 
+    // Profile/company enrichment backend. Lead sourcing always stays on LeadShark.
+    PROFILE_ENRICH_PROVIDER: z.enum(["leadshark", "scrapfly"]).default("leadshark"),
+    SCRAPFLY_API_KEY: z.string().optional(),
+
     WEB_RESEARCH_PROVIDER: z.enum(["perplexity", "linkup"]),
     PERPLEXITY_API_KEY: z.string().optional(),
     LINKUP_API_KEY: z.string().optional(),
@@ -62,6 +66,13 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ["LINKUP_API_KEY"],
         message: "LINKUP_API_KEY is required when WEB_RESEARCH_PROVIDER=linkup",
+      });
+    }
+    if (val.PROFILE_ENRICH_PROVIDER === "scrapfly" && !val.SCRAPFLY_API_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["SCRAPFLY_API_KEY"],
+        message: "SCRAPFLY_API_KEY is required when PROFILE_ENRICH_PROVIDER=scrapfly",
       });
     }
     if (val.ENRICH_WINDOW_END_HOUR <= val.ENRICH_WINDOW_START_HOUR) {

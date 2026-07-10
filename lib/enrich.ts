@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { leads } from "@/lib/db/schema";
 import type { EnrichmentJobRow, LeadRow } from "@/lib/db/schema";
-import { leadshark } from "@/lib/leadshark";
+import { getProfileEnricher } from "@/lib/enrich-provider";
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import { enqueueJob, markDone, markFailed, closeOpenJobs } from "@/lib/jobs";
@@ -40,12 +40,22 @@ export async function ensurePersonInline(lead: LeadRow): Promise<LeadRow> {
     return lead;
   }
   try {
-    const res = await leadshark.enrichPerson(lead.linkedinUsername, env.PERSON_ENRICH_SECTIONS);
+    const res = await getProfileEnricher().enrichPerson(
+      lead.linkedinUsername,
+      env.PERSON_ENRICH_SECTIONS
+    );
     await incrementUsage("person");
     const data: PersonEnrichmentData | null = res?.data ?? null;
     await db
       .update(leads)
-      .set({ personEnriched: data, personEnrichedAt: new Date(), updatedAt: new Date() })
+      .set({
+        personEnriched: data,
+        personEnrichedAt: new Date(),
+        // Scrapfly resolves the employer's slug straight from the profile; adopt
+        // it so ensureCompanyInline can enrich the company without a search hop.
+        ...(res?.companySlug ? { companySlug: res.companySlug } : {}),
+        updatedAt: new Date(),
+      })
       .where(eq(leads.id, lead.id));
     // A worker-queued person job would re-view the same profile — close it.
     await closeOpenJobs(lead.id, "person");
@@ -62,7 +72,7 @@ export async function ensureCompanyInline(lead: LeadRow): Promise<LeadRow> {
   const employer = lead.personEnriched?.experience?.[0]?.company?.trim();
   if (!slug && employer) {
     try {
-      const res = await leadshark.searchLinkedin({ company: employer }, 5);
+      const res = await getProfileEnricher().searchLinkedin({ company: employer }, 5);
       slug = res?.data?.results?.[0]?.linkedin_id ?? null;
       if (slug) {
         await db.update(leads).set({ companySlug: slug, updatedAt: new Date() }).where(eq(leads.id, lead.id));
@@ -79,7 +89,7 @@ export async function ensureCompanyInline(lead: LeadRow): Promise<LeadRow> {
     return (await loadLead(lead.id)) ?? lead;
   }
   try {
-    const res = await leadshark.enrichCompany(slug);
+    const res = await getProfileEnricher().enrichCompany(slug);
     await incrementUsage("company");
     const data: CompanyEnrichmentData | null = res?.data ?? null;
     await db
@@ -99,14 +109,33 @@ export async function handlePerson(lead: LeadRow): Promise<void> {
   if (!lead.linkedinUsername) {
     throw new Error("person enrich: lead has no linkedin_username");
   }
-  const res = await leadshark.enrichPerson(lead.linkedinUsername, env.PERSON_ENRICH_SECTIONS);
+  const res = await getProfileEnricher().enrichPerson(
+    lead.linkedinUsername,
+    env.PERSON_ENRICH_SECTIONS
+  );
   await incrementUsage("person");
 
   const data: PersonEnrichmentData | null = res?.data ?? null;
   await db
     .update(leads)
-    .set({ personEnriched: data, personEnrichedAt: new Date(), updatedAt: new Date() })
+    .set({
+      personEnriched: data,
+      personEnrichedAt: new Date(),
+      ...(res?.companySlug ? { companySlug: res.companySlug } : {}),
+      updatedAt: new Date(),
+    })
     .where(eq(leads.id, lead.id));
+
+  // If the enricher already resolved the company slug (Scrapfly reads it from
+  // the profile), skip the name→slug search hop and enqueue company enrich.
+  if (res?.companySlug) {
+    await enqueueJob({ leadId: lead.id, kind: "company", priority: lead.score ?? 0 });
+    log.info("person enriched; queued company enrich (slug from profile)", {
+      leadId: lead.id,
+      slug: res.companySlug,
+    });
+    return;
+  }
 
   // Two-hop: if we learned the current employer, resolve its slug next.
   const employer = data?.experience?.[0]?.company?.trim();
@@ -129,7 +158,7 @@ export async function handleCompanyResolve(lead: LeadRow): Promise<void> {
   if (!employer) {
     throw new Error("company_resolve: no employer name on person enrichment");
   }
-  const res = await leadshark.searchLinkedin({ company: employer }, 5);
+  const res = await getProfileEnricher().searchLinkedin({ company: employer }, 5);
   const slug = res?.data?.results?.[0]?.linkedin_id;
   if (!slug) {
     throw new Error(`company_resolve: no slug found for "${employer}"`);
@@ -149,7 +178,7 @@ export async function handleCompany(lead: LeadRow): Promise<void> {
   if (!lead.companySlug) {
     throw new Error("company enrich: lead has no company_slug");
   }
-  const res = await leadshark.enrichCompany(lead.companySlug);
+  const res = await getProfileEnricher().enrichCompany(lead.companySlug);
   await incrementUsage("company");
 
   const data: CompanyEnrichmentData | null = res?.data ?? null;

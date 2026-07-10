@@ -149,6 +149,13 @@ export interface PersonEnrichmentData {
 export interface EnrichPersonResponse {
   success: boolean;
   data: PersonEnrichmentData;
+  /**
+   * Optional: the company LinkedIn slug the enricher resolved directly from the
+   * person's profile (Scrapfly reads it from the profile's `worksFor` data).
+   * LeadShark leaves this undefined and relies on the searchLinkedin name→slug
+   * hop instead.
+   */
+  companySlug?: string | null;
 }
 
 /* ───────────────────── LeadShark: linkedin search ───────────────────── */
